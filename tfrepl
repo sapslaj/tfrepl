@@ -3,12 +3,10 @@ from copy import copy, deepcopy
 import tempfile
 import os
 
-# import readline
 import sys
 import pygments
 from pygments.lexers import TerraformLexer
 from pygments.styles import get_style_by_name
-from prompt_toolkit.shortcuts import prompt as pt_prompt
 from prompt_toolkit.lexers import PygmentsLexer
 from prompt_toolkit.formatted_text import PygmentsTokens
 from prompt_toolkit.styles.pygments import style_from_pygments_cls
@@ -23,6 +21,10 @@ def run(dir):
     os.system(f"terraform -chdir={dir} plan")
 
 
+def fmt(dir):
+    os.system(f"terraform -chdir={dir} fmt")
+
+
 def touch_repl_file(dir, filename):
     os.system(f"touch {dir}/{filename}")
 
@@ -31,7 +33,7 @@ def read_repl_file(dir, filename):
     lines = []
     with open(f"{dir}/{filename}", "r") as file:
         lines = file.readlines()
-    return lines
+    return [line.rstrip("\n") for line in lines]
 
 
 def write_repl_file(dir, filename, lines):
@@ -103,6 +105,8 @@ def repl(session, dir):
         lines, block_level, direct_output = lines_reducer(lines, block_level, direct_output, line)
         if line == "" and block_level == 0:
             write_repl_file(dir, "repl.tf", lines)
+            fmt(dir)
+            lines = read_repl_file(dir, "repl.tf")
             print_lines(lines, style)
             run(dir)
             reset = True
@@ -121,8 +125,10 @@ def repl(session, dir):
                 touch_repl_file(dir, "repl.tf")
             os.system(f"{editor} {dir}/repl.tf")
             edited_lines = desugar(read_repl_file(dir, "repl.tf"))
-            print_lines(edited_lines, style)
             write_repl_file(dir, "repl.tf", edited_lines)
+            fmt(dir)
+            lines = read_repl_file(dir, "repl.tf")
+            print_lines(lines, style)
             run(dir)
             reset = True
         elif line in ("exit", "exit()", "quit", "quit()", ":q", ":quit"):

@@ -46,14 +46,19 @@ def lines_reducer(lines, block_level, direct_output, new_line):
     block_level = copy(block_level)
     direct_output = copy(direct_output)
     if new_line.startswith("="):
+        if direct_output:
+            lines.append("}")
         direct_output = True
         lines.append('output "output" {')
         block_level = 1
         lines.append(f"  value {new_line}")
     elif new_line.startswith("local "):
+        if direct_output:
+            lines.append("}")
+        direct_output = True
         lines.append("locals {")
         block_level = 1
-        lines.append(new_line.removeprefix("local "))
+        lines.append("  " + new_line.removeprefix("local "))
     else:
         lines.append(new_line)
     for character in new_line:
@@ -75,7 +80,13 @@ def desugar(input_lines, lines=None, block_level=None, direct_output=None):
     for line in input_lines:
         lines, block_level, direct_output = lines_reducer(lines, block_level, direct_output, line.rstrip("\n"))
     # big chung hack
-    if len(lines) > 2 and lines[-2] == 'output "output" {' and line[-1] != "}" and block_level == 1 and direct_output:
+    if all([
+        len(lines) > 2,
+        lines[-2] in ['output "output" {', "locals {"],
+        line[-1] != "}",
+        block_level == 1,
+        direct_output,
+    ]):
         lines.append("}")
     return lines
 
